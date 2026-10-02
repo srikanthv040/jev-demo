@@ -16,6 +16,21 @@ Both providers make one request per ticket for the same five classification fiel
 
 The timing is wall-clock time for sequential API requests, including network and service overhead. It is not a measure of model-only inference time. For a presentation, run the comparison more than once and report the average.
 
+## Prerequisites and provider accounts
+
+All run modes require Python 3.10 or newer, an internet connection, and the packages in `requirements.txt`.
+
+| Run mode | Account and credential required |
+| --- | --- |
+| OpenAI only | An OpenAI API Platform account and an API key stored as `OPENAI_API_KEY`. Create/manage the key in the [OpenAI API dashboard](https://platform.openai.com/api-keys). |
+| Jev only | A TypeSafe account and API key stored as `TYPESAFE_API_KEY`. Create the key from the [TypeSafe console](https://console.typesafe.ai/). |
+| Compare both | Both accounts and both API keys. |
+
+A ChatGPT subscription by itself does not include API usage; OpenAI API billing is managed separately. API calls may incur provider charges, so check your plan, usage limits, and current pricing before running a large batch. See [OpenAI API billing](https://help.openai.com/en/articles/9039756-managing-billing-settings-on-the-chatgpt-web-and-api-platform) and the [TypeSafe Python SDK quickstart](https://docs.typesafe.ai/sdk/python).
+
+The app only requires the key for the selected provider mode. The custom endpoint settings (`OPENAI_BASE_URL` and `TYPESAFE_BASE_URL`) are optional; leave them blank to use each provider's default endpoint.
+
+
 ## Setup (Windows PowerShell)
 
 1. Install Python 3.10 or newer.
