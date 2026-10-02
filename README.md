@@ -73,6 +73,30 @@ Use the included data file or upload another CSV in the app.
 
 For edge-case practice, upload `data/sample_tickets_edge_cases.csv`. It contains 30 synthetic tickets with only ticket IDs and text. Compare the results with `data/sample_ticket_answer_key.csv`; keep the answer-key file separate from the model input. The set covers all five category outcomes, Major/Moderate/Minor impact, Low/Medium/High priority, Not Applicable for unrelated requests, vague or conflicting descriptions, and out-of-scope requests.
 
+## How to test
+
+1. Start the app and select **Compare OpenAI and Jev**.
+2. Keep the default edge-case dataset, or upload `data/sample_tickets_edge_cases.csv`.
+3. For a quick check, set **Tickets to process** to `3`. For the full run, set it to `30`.
+4. Set the Jev human-feedback threshold (default `0.70`) and click **Run selected model(s)**.
+5. Review the timing table, both result tables, and any red **Human Review Required** cells. Download the result CSVs and compare ticket labels with `data/sample_ticket_answer_key.csv`.
+
+Run the same dataset several times before presenting a timing comparison. The calls run sequentially and include network and provider overhead, so a single run is only a snapshot.
+
+
+### Comparison results
+
+Record the actual values displayed by the app. It reports total wall-clock seconds and average seconds per ticket for each selected provider.
+
+| Run | Tickets | OpenAI total time (s) | OpenAI avg / ticket (s) | Jev total time (s) | Jev avg / ticket (s) | Jev human reviews | Errors |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 30 | ___ | ___ | ___ | ___ | ___ | ___ |
+| 2 | 30 | ___ | ___ | ___ | ___ | ___ | ___ |
+| 3 | 30 | ___ | ___ | ___ | ___ | ___ | ___ |
+| Average | 30 | ___ | ___ | ___ | ___ | ___ | ___ |
+
+Use the app's **Elapsed-time comparison** table for total and average time. The average is total time divided by the number of tickets. The human-review count is the number of Jev rows whose status is **Human Review Required**. For an OpenAI-only run, Jev columns do not apply; for a Jev-only run, OpenAI columns do not apply.
+
 ## Project structure
 
 ```text
