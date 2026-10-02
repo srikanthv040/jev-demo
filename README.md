@@ -86,14 +86,31 @@ Run the same dataset several times before presenting a timing comparison. The ca
 
 ### Comparison results
 
-Record the actual values displayed by the app. It reports total wall-clock seconds and average seconds per ticket for each selected provider.
+#### Example run
+
+This example is taken from the screenshot supplied with the project feedback. It used 5 tickets, `gpt-4o-mini`, and `jev-latest`; both providers completed without errors.
+
+| Provider | Model | Tickets | Total time (s) | Average per ticket (s) | Errors |
+| --- | --- | ---: | ---: | ---: | ---: |
+| OpenAI | `gpt-4o-mini` | 5 | 9.320 | 1.864 | 0 |
+| TypeSafe Jev | `jev-latest` | 5 | 1.934 | 0.387 | 0 |
+
+In this run, TypeSafe Jev completed about **4.82× faster** than OpenAI. This is one observed run, not a guaranteed performance result; timing varies with network conditions, provider load, and account configuration.
+
+![Streamlit timing comparison from the supplied five-ticket run]<img width="1896" height="836" alt="image" src="https://github.com/user-attachments/assets/58746a7f-6ed3-4aa6-8105-345522c30c58" />
+
+
+#### Template for your own comparison
+
+Use the same dataset size and model settings for each provider. Record the values displayed by the app; repeat the run three times and calculate the average if you want a more stable comparison.
 
 | Run | Tickets | OpenAI total time (s) | OpenAI avg / ticket (s) | Jev total time (s) | Jev avg / ticket (s) | Jev human reviews | Errors |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 30 | ___ | ___ | ___ | ___ | ___ | ___ |
-| 2 | 30 | ___ | ___ | ___ | ___ | ___ | ___ |
-| 3 | 30 | ___ | ___ | ___ | ___ | ___ | ___ |
-| Average | 30 | ___ | ___ | ___ | ___ | ___ | ___ |
+| 1 | ___ | ___ | ___ | ___ | ___ | ___ | ___ |
+| 2 | ___ | ___ | ___ | ___ | ___ | ___ | ___ |
+| 3 | ___ | ___ | ___ | ___ | ___ | ___ | ___ |
+| Average | ___ | ___ | ___ | ___ | ___ | ___ | ___ |
+
 
 Use the app's **Elapsed-time comparison** table for total and average time. The average is total time divided by the number of tickets. The human-review count is the number of Jev rows whose status is **Human Review Required**. For an OpenAI-only run, Jev columns do not apply; for a Jev-only run, OpenAI columns do not apply.
 
@@ -102,9 +119,7 @@ Use the app's **Elapsed-time comparison** table for total and average time. The 
 ```text
 app.py                         Streamlit dashboard
 src/categorizer.py             Provider calls, shared labels, and timing
-data/support_ticket_data.csv   Original learning-project data
 data/sample_tickets_edge_cases.csv  30 synthetic ambiguous and unrelated test tickets
-data/sample_ticket_answer_key.csv   Expected labels and review notes for edge cases
 .env.example                   API key/model settings template
 requirements.txt               Python dependencies
 ```
