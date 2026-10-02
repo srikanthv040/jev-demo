@@ -97,7 +97,7 @@ This example is taken from the screenshot supplied with the project feedback. It
 
 In this run, TypeSafe Jev completed about **4.82× faster** than OpenAI. This is one observed run, not a guaranteed performance result; timing varies with network conditions, provider load, and account configuration.
 
-![Streamlit timing comparison from the supplied five-ticket run]<img width="1896" height="836" alt="image" src="https://github.com/user-attachments/assets/58746a7f-6ed3-4aa6-8105-345522c30c58" />
+<img width="1896" height="836" alt="image" src="https://github.com/user-attachments/assets/58746a7f-6ed3-4aa6-8105-345522c30c58" />
 
 
 #### Template for your own comparison
