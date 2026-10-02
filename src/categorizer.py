@@ -1,8 +1,19 @@
-"""Shared ticket categorization and provider adapters for OpenAI and TypeSafe Jev."""
+"""Shared ticket categorization and provider adapters for OpenAI and TypeSafe Jev.
+
+This module defines the label taxonomy used by both providers, one adapter per
+provider (each classifies a single ticket in a single API call), and helpers to
+run a whole DataFrame of tickets and time it.
+
+Both adapters return the same five fields (category, device, problem_type,
+user_impact, priority) as human-readable labels so results are comparable.
+The Jev adapter additionally returns per-field confidence scores and a
+human-review flag.
+"""
 
 from __future__ import annotations
 
 import json
+import math
 import os
 import time
 from dataclasses import dataclass
@@ -13,8 +24,13 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from typesafe_sdk import Choice, TypeSafeClient
 
+# Load API keys/model names from a local .env file (see .env.example).
 load_dotenv()
 
+# --- Label taxonomy -----------------------------------------------------------
+# Each dict maps a machine-friendly key (used as the Jev choice id) to the
+# human-readable label shown in the UI/CSV and used as the OpenAI JSON-schema enum.
+# Keep these in sync with the answer options described in the README.
 CATEGORIES = {
     "technical_issue": "Technical Issue",
     "hardware_issue": "Hardware Issue",
@@ -64,10 +80,17 @@ class ProviderError(RuntimeError):
 
 
 def _choice_descriptions(options: dict[str, str]) -> dict[str, str]:
-    return {key: value for key, value in options.items()}
+    """Return a copy of a taxonomy dict, used as Jev `Choice` criteria (key -> description)."""
+    return dict(options)
 
 
 def _labels(raw: dict[str, Any]) -> dict[str, str]:
+    """Normalise raw model output into the canonical display labels.
+
+    Accepts either the machine key (``"slow_internet"``), a key with spaces or
+    hyphens, or the display label itself (case-insensitive). An unexpected
+    value fails the row instead of silently changing the model's answer.
+    """
     fields = {
         "category": CATEGORIES,
         "device": DEVICES,
@@ -83,11 +106,23 @@ def _labels(raw: dict[str, Any]) -> dict[str, str]:
             result[name] = choices[value]
             continue
         match = next((label for label in choices.values() if label.casefold() == raw_value.casefold()), None)
-        result[name] = match or choices.get("other_unclear", raw_value)
+        if match is None:
+            raise ProviderError(f"Unexpected {name} choice: {raw_value!r}")
+        result[name] = match
     return result
 
 
+def _confidence(value: Any) -> float | None:
+    """Treat missing, malformed, or out-of-range confidence as uncertain."""
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return None
+    return score if math.isfinite(score) and 0.0 <= score <= 1.0 else None
+
+
 def _openai_client() -> tuple[OpenAI, str]:
+    """Build the OpenAI client and resolve the model name from the environment."""
     key = os.getenv("OPENAI_API_KEY")
     if not key:
         raise ProviderError("Set OPENAI_API_KEY in the project's .env file.")
@@ -99,6 +134,8 @@ def _openai_client() -> tuple[OpenAI, str]:
 
 
 def _openai_one(client: OpenAI, model: str, ticket: str) -> dict[str, str]:
+    """Classify one ticket with OpenAI using strict structured output (JSON schema)."""
+    # Strict JSON schema: the model can only return one of the allowed enum labels.
     schema = {
         "type": "object",
         "properties": {
@@ -111,6 +148,7 @@ def _openai_one(client: OpenAI, model: str, ticket: str) -> dict[str, str]:
         "required": ["category", "device", "problem_type", "user_impact", "priority"],
         "additionalProperties": False,
     }
+    # The prompt mirrors the instructions given to Jev so the comparison is like-for-like.
     system = (
         "Classify this support ticket. Choose exactly one value for every field from the supplied JSON schema. "
         "Category choices are Technical Issue, Hardware Issue, Data Recovery, Needs Review / Ambiguous, "
@@ -124,7 +162,7 @@ def _openai_one(client: OpenAI, model: str, ticket: str) -> dict[str, str]:
         model=model,
         messages=[{"role": "system", "content": system}, {"role": "user", "content": ticket}],
         response_format={"type": "json_schema", "json_schema": {"name": "ticket_classification", "strict": True, "schema": schema}},
-        temperature=0,
+        temperature=0,  # Deterministic output makes repeated timing runs comparable.
     )
     content = response.choices[0].message.content
     if not content:
@@ -133,6 +171,7 @@ def _openai_one(client: OpenAI, model: str, ticket: str) -> dict[str, str]:
 
 
 def _typesafe_client() -> tuple[TypeSafeClient, str]:
+    """Build the TypeSafe client and resolve the Jev model name from the environment."""
     key = os.getenv("TYPESAFE_API_KEY")
     if not key:
         raise ProviderError("Set TYPESAFE_API_KEY in the project's .env file.")
@@ -147,6 +186,14 @@ def _jev_one(
     ticket: str,
     confidence_threshold: float,
 ) -> dict[str, Any]:
+    """Classify one ticket with Jev and flag low-confidence results for human review.
+
+    Jev answers five typed ``Choice`` questions in a single ``system_one`` call and
+    returns a confidence score per answer. A ticket is flagged "Human Review
+    Required" if any field's confidence is below ``confidence_threshold`` or if a
+    confidence score is missing/invalid, or the chosen category explicitly
+    calls for review.
+    """
     response = client.system_one(
         state={"support_ticket": ticket},
         model=model,
@@ -159,29 +206,32 @@ def _jev_one(
         },
     )
     fields = ("category", "device", "problem_type", "user_impact", "priority")
+    # `response.choices[field]` holds the selected option and its confidence.
     answers = {field: response.choices[field] for field in fields}
     raw = {field: answers[field].choice for field in fields}
-    confidences = {
-        field: float(answers[field].confidence) if getattr(answers[field], "confidence", None) is not None else None
-        for field in fields
-    }
+    confidences = {field: _confidence(getattr(answers[field], "confidence", None)) for field in fields}
     low_confidence_fields = [
         field for field, score in confidences.items()
         if score is None or score < confidence_threshold
     ]
     result: dict[str, Any] = _labels(raw)
     result.update({f"{field}_confidence": score for field, score in confidences.items()})
-    available_confidences = [score for score in confidences.values() if score is not None]
-    result["minimum_confidence"] = min(available_confidences) if available_confidences else None
+    result["minimum_confidence"] = min(confidences.values()) if all(
+        score is not None for score in confidences.values()
+    ) else None
     result["low_confidence_fields"] = ", ".join(low_confidence_fields)
     result["review_status"] = (
-        "Human Review Required" if low_confidence_fields else "No human feedback needed"
+        "Human Review Required"
+        if low_confidence_fields or result["category"] == CATEGORIES["needs_review"]
+        else "No human feedback needed"
     )
     return result
 
 
 @dataclass
 class RunSummary:
+    """Results and timing for one provider run over a set of tickets."""
+
     provider: str
     model: str
     results: pd.DataFrame
@@ -214,6 +264,8 @@ def run_provider(
     else:
         raise ValueError("Provider must be OpenAI or Jev.")
 
+    # Wall-clock timing covers the whole sequential loop (network + service overhead),
+    # not model-only inference time.
     started = time.perf_counter()
     rows: list[dict[str, Any]] = []
     errors: list[str] = []
@@ -227,11 +279,12 @@ def run_provider(
             fields = classify(item["support_ticket_text"])
             item.update(fields)
             item["error"] = ""
-        except Exception as exc:  # Keep remaining tickets running and show row-level errors.
+        except Exception as exc:  # Broad catch is intentional: one bad ticket must not abort the run.
             message = f"{item['support_tick_id']}: {exc}"
             errors.append(message)
             item.update({"category": "", "device": "", "problem_type": "", "user_impact": "", "priority": ""})
             if display_name == "TypeSafe Jev":
+                # A failed Jev call is always routed to a human.
                 item.update({
                     "category_confidence": None,
                     "device_confidence": None,
@@ -251,6 +304,7 @@ def run_provider(
 
 
 def compare_summaries(summaries: list[RunSummary]) -> pd.DataFrame:
+    """Build the elapsed-time table shown in the app (one row per provider)."""
     return pd.DataFrame([
         {
             "Provider": summary.provider,

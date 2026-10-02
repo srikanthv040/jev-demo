@@ -1,5 +1,5 @@
 openai>=1.96.1,<2.0.0
 pandas>=2.2.2,<3.0.0
 python-dotenv>=1.0.1,<2.0.0
-streamlit>=1.47.1,<2.0.0
-typesafe-sdk>=0.1.0
+streamlit>=1.50.0,<2.0.0
+typesafe-sdk>=0.1.0,<1.0.0
