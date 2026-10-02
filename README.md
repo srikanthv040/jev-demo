@@ -88,16 +88,17 @@ Run the same dataset several times before presenting a timing comparison. The ca
 
 #### Example run
 
-This example is taken from the screenshot supplied with the project feedback. It used 5 tickets, `gpt-4o-mini`, and `jev-latest`; both providers completed without errors.
+This example is taken from the screenshot supplied with the project feedback. It used 30 tickets, `gpt-4o-mini`, and `jev-latest`; both providers completed without errors.
 
 | Provider | Model | Tickets | Total time (s) | Average per ticket (s) | Errors |
 | --- | --- | ---: | ---: | ---: | ---: |
-| OpenAI | `gpt-4o-mini` | 5 | 9.320 | 1.864 | 0 |
-| TypeSafe Jev | `jev-latest` | 5 | 1.934 | 0.387 | 0 |
+| OpenAI | `gpt-4o-mini` | 30 | 49.755 | 1.658 | 0 |
+| TypeSafe Jev | `jev-latest` | 30 | 10.836 | 0.361 | 0 |
 
 In this run, TypeSafe Jev completed about **4.82× faster** than OpenAI. This is one observed run, not a guaranteed performance result; timing varies with network conditions, provider load, and account configuration.
 
-<img width="1896" height="836" alt="image" src="https://github.com/user-attachments/assets/58746a7f-6ed3-4aa6-8105-345522c30c58" />
+<img width="1442" height="512" alt="image" src="https://github.com/user-attachments/assets/181c176c-ba2e-42fc-948b-ee57a61fd48d" />
+
 
 
 #### Template for your own comparison
